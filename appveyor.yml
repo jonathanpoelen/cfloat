@@ -12,26 +12,26 @@ platform:
   #- Debug
   #- Release
 
-clone_folder: c:\projects\cfloat
+clone_folder: c:\projects\falcon.cfloat
 
 build:
   parallel: false
-  project: c:\projects\cfloat\build\cfloat.sln
+  project: c:\projects\falcon.cfloat\build\falcon.cfloat.sln
   verbosity: minimal
 
 before_build:
-  - cd c:\projects\cfloat
+  - cd c:\projects\falcon.cfloat
   - md build
   - cd build
   - cmake -G"Visual Studio 14 2015 Win64" ..
 
 build_script:
- - cd c:\projects\cfloat\build
- #- msbuild /target:all_tests /p:Configuration=Debug;Platform=x64 cfloat.sln
- - msbuild /p:Configuration=Debug;Platform=x64 cfloat.sln
- - msbuild /p:Configuration=Release;Platform=x64 cfloat.sln
+ - cd c:\projects\falcon.cfloat\build
+ #- msbuild /target:all_tests /p:Configuration=Debug;Platform=x64 falcon.cfloat.sln
+ - msbuild /p:Configuration=Debug;Platform=x64 falcon.cfloat.sln
+ - msbuild /p:Configuration=Release;Platform=x64 falcon.cfloat.sln
 
 test_script:
- - cd c:\projects\cfloat\build
+ - cd c:\projects\falcon.cfloat\build
  - cmd: ctest -C Debug -VV
  - cmd: ctest -C Release -VV

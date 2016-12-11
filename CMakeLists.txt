@@ -1,4 +1,4 @@
-project(cfloat)
+project(falcon.cfloat)
 cmake_minimum_required(VERSION 2.8)
 
 option(ENABLE_CXX_VERSION "enable -std=$version if clang or gcc." c++11)
@@ -34,4 +34,4 @@ add_executable_test(cfloat)
 enable_testing()
 
 
-# install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cfloat DESTINATION .)
+# install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/falcon.cfloat DESTINATION .)
