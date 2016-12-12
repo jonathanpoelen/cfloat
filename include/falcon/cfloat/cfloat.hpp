@@ -1290,4 +1290,47 @@ constexpr bool cfloat_islessgreater(Int a, Int b)
   return unsigned(cfloat_compare(a, b)) & 1u;
 }
 
+template<class Int>
+constexpr Int cfloat_abs(Int a)
+{
+  using cons = float_traits_from<Int>;
+  return x & ~cons::signBit;
+}
+
+template<class Int>
+constexpr Int cfloat_copysign(Int a, Int b)
+{
+  using cons = float_traits_from<Int>;
+  return cfloat_abs(a) | (b & cons::signBit);
+}
+
+template<class Int>
+constexpr Int cfloat_fmin(Int a, Int b)
+{
+  using cons = float_traits_from<Int>;
+  if (cfloat_isnan(a)) return b;
+  if (cfloat_isnan(b)) return a;
+  return cfloat_isless(a, b) ? a : b;
+}
+
+template<class Int>
+constexpr Int cfloat_fmax(Int a, Int b)
+{
+  using cons = float_traits_from<Int>;
+  if (cfloat_isnan(a)) return b;
+  if (cfloat_isnan(b)) return a;
+  return cfloat_isless(a, b) ? b : a;
+}
+
+template<class Int>
+constexpr Int cfloat_fdim(Int a, Int b)
+{
+  using cons = float_traits_from<Int>;
+  if (cfloat_unordered(a, b)) return cons::qnanRep;
+  return cfloat_isless(b, a) ? cfloat_sub(a, b) : Int{};
+}
+
+// nextafter
+// nexttoward
+
 } } }
