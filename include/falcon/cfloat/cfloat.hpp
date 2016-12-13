@@ -34,16 +34,6 @@ SOFTWARE.
 #include <type_traits>
 #include <limits>
 
-// std::round_indeterminate       Rounding style cannot be determined
-// std::round_toward_zero         Rounding toward zero
-// std::round_to_nearest          Rounding toward nearest representable value
-// std::round_toward_infinity     Rounding toward positive infinity
-// std::round_toward_neg_infinity Rounding toward negative infinity
-
-// std::denorm_indeterminate Support of subnormal values cannot be determined
-// std::denorm_absent        The type does not support subnormal values
-// std::denorm_present       The type allows subnormal values
-
 namespace falcon { namespace cfloat { namespace detail {
 
 template<class Int, class Float, std::size_t SignificandBits>
@@ -61,7 +51,8 @@ struct basic_float_traits
 
   static const std::size_t implicitBit     = Int(1) << significandBits;
   static const std::size_t significandMask = implicitBit - 1u;
-  static const std::size_t signBit         = Int(1) << (significandBits + exponentBits);
+  static const std::size_t exponentSignBit = significandBits + exponentBits;
+  static const std::size_t signBit         = Int(1) << exponentSignBit;
   static const std::size_t absMask         = signBit - 1u;
   static const std::size_t exponentMask    = absMask ^ significandMask;
   static const std::size_t oneRep          = exponentBias << significandBits;
@@ -1123,24 +1114,6 @@ clfoat_ll2f(ll_or_ull a)
   }
 }
 
-template<class Int>
-constexpr Int cfloat_pow(Int a, int b)
-{
-  using traits = float_traits_from<Int>;
-  const bool recip = b < 0;
-  Int r = cfloat_i2f<traits>(1u);
-  while (1)
-  {
-    if (b & 1)
-      r = cfloat_mul(r, a);
-    b /= 2;
-    if (b == 0)
-      break;
-    cfloat_mul(a, a);
-  }
-  return recip ? cfloat_div(cfloat_i2f<traits>(1u), r) : r;
-}
-
 
 template<class Int>
 constexpr bool cfloat_isnan(Int a)
@@ -1294,7 +1267,14 @@ template<class Int>
 constexpr Int cfloat_abs(Int a)
 {
   using cons = float_traits_from<Int>;
-  return x & ~cons::signBit;
+  return a & ~cons::signBit;
+}
+
+template<class Int>
+constexpr Int cfloat_signmask(Int a)
+{
+  using cons = float_traits_from<Int>;
+  return a & cons::signBit;
 }
 
 template<class Int>
@@ -1307,7 +1287,6 @@ constexpr Int cfloat_copysign(Int a, Int b)
 template<class Int>
 constexpr Int cfloat_fmin(Int a, Int b)
 {
-  using cons = float_traits_from<Int>;
   if (cfloat_isnan(a)) return b;
   if (cfloat_isnan(b)) return a;
   return cfloat_isless(a, b) ? a : b;
@@ -1316,7 +1295,6 @@ constexpr Int cfloat_fmin(Int a, Int b)
 template<class Int>
 constexpr Int cfloat_fmax(Int a, Int b)
 {
-  using cons = float_traits_from<Int>;
   if (cfloat_isnan(a)) return b;
   if (cfloat_isnan(b)) return a;
   return cfloat_isless(a, b) ? b : a;
@@ -1330,7 +1308,55 @@ constexpr Int cfloat_fdim(Int a, Int b)
   return cfloat_isless(b, a) ? cfloat_sub(a, b) : Int{};
 }
 
-// nextafter
-// nexttoward
+template<class Int>
+constexpr Int cfloat_pow(Int base, int iexp)
+{
+  using cons = float_traits_from<Int>;
+
+  if (iexp == 0 || base == 1) {
+    return cons::oneRep;
+  }
+
+  // pow(+0, exp) = +∞ if exp is a negative odd integer
+  // pow(-0, exp) = -∞ if exp is a negative odd integer
+  // pow(±0, exp) = +∞ if exp is a negative even integer
+  // pow(+0, exp) = +0 if exp is a positive odd integer
+  // pow(-0, exp) = -0 if exp is a positive odd integer
+  // pow(±0, exp) = +0 if exp is a positive even integer
+  if (cfloat_iszero(base)) {
+    return ((iexp < 0) ? cons::infRep : Int{})
+      // iexp is odd integer and base is -0 = negative
+      | ((base & cons::signBit) & (Int(iexp & 1) << cons::exponentSignBit));
+  }
+
+  // pow(-∞, exp) = -0 if exp is a negative odd integer
+  // pow(-∞, exp) = +0 if exp is a negative even integer
+  // pow(-∞, exp) = -∞ if exp is a positive odd integer
+  // pow(-∞, exp) = +∞ if exp is a positive even integer
+  // pow(+∞, exp) = +0 for any negative exp
+  // pow(+∞, exp) = +∞ for any positive exp
+  if (cfloat_isinf(base)) {
+    return ((iexp < 0) ? Int{} : cons::infRep)
+      // iexp is odd integer and base is -Inf = negative
+      | ((base & cons::signBit) & (Int(iexp & 1) << cons::exponentSignBit));
+  }
+
+  //if (cfloat_isnan(base)) {
+  //  return cons::qNaN;
+  //}
+
+  const bool recip = iexp < 0;
+  Int r = cons::oneRep;
+  while (1)
+  {
+    if (iexp & 1)
+      r = cfloat_mul(r, base);
+    iexp /= 2;
+    if (iexp == 0)
+      break;
+    base = cfloat_mul(base, base);
+  }
+  return recip ? cfloat_div(cons::oneRep, r) : r;
+}
 
 } } }
